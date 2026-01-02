@@ -1,0 +1,23 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "actual-budget-client"
+version = "0.1.0"
+description = "Client for importing bank statements to Actual Budget"
+authors = ["Gururagavendra <your-email@example.com>"]
+readme = "README.md"
+# Removed packages since this is a script-based project
+
+[tool.poetry.dependencies]
+python = "^3.10"
+actual = "*"  # Assuming this is the actualbudget library
+pymupdf = "*"
+requests = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+
+[tool.uv]
+dev-dependencies = []
