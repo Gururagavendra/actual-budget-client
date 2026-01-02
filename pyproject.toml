@@ -15,6 +15,7 @@ python = "^3.10"
 actual = "*"  # Assuming this is the actualbudget library
 pymupdf = "*"
 requests = "*"
+actualpy = "^0.19.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"

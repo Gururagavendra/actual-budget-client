@@ -16,6 +16,7 @@ from actual.queries import create_transaction, get_account, create_account, get_
 
 from pdf_reader_ocr import extract_text_from_pdf, process_bank_statement
 from verify_pdf_extraction import verify_pdf_extraction_is_correct, print_verification_results
+from utils.smart_categorize import categorize_transaction, extract_transaction_description
 
 # Configuration
 ACTUAL_SERVER_URL = "http://localhost:5006"
@@ -175,26 +176,29 @@ def import_detailed_transactions(pdf_path: str, password: str = None, dry_run: b
             else:
                 print(f"\n✓ Using existing account: {ACTUAL_ACCOUNT_NAME}")
             
-            # Get categories
+            # Get Income and Starting Balances categories
             categories = get_categories(actual.session)
             income_category = None
-            general_category = None
+            starting_balance_category = None
+            category_map = {}
+            
             for cat in categories:
+                category_map[cat.name] = cat
                 if cat.name == "Income":
                     income_category = cat
-                elif cat.name == "General":
-                    general_category = cat
+                elif cat.name == "Starting Balances":
+                    starting_balance_category = cat
             
             if not income_category:
                 print("❌ 'Income' category not found! Please create it in ActualBudget.")
                 return
-            if not general_category:
-                print("❌ 'General' category not found! Please create it in ActualBudget.")
+            if not starting_balance_category:
+                print("❌ 'Starting Balances' category not found! Please create it in ActualBudget.")
                 return
             
             transactions_created = 0
             
-            # Create opening balance - NO CATEGORY (it's not income, it's just starting balance)
+            # Create opening balance with Starting Balances category
             first_date = parse_date(transactions[0]['date']) if transactions else datetime.date.today()
             txn = create_transaction(
                 actual.session,
@@ -204,7 +208,9 @@ def import_detailed_transactions(pdf_path: str, password: str = None, dry_run: b
                 notes="Starting balance from bank statement",
                 amount=decimal.Decimal(str(summary['starting_balance']))
             )
-            # Don't set category for starting balance
+            # Set as Starting Balances category
+            if starting_balance_category:
+                txn.category_id = starting_balance_category.id
             transactions_created += 1
             print(f"   ✓ Opening balance: ₹{summary['starting_balance']:,.2f}")
             
@@ -214,6 +220,20 @@ def import_detailed_transactions(pdf_path: str, password: str = None, dry_run: b
                 txn_date = parse_date(txn_data['date'])
                 description = txn_data['description'] or "Transaction"
                 
+                # Extract human-readable description using LLM
+                try:
+                    extracted_notes = extract_transaction_description(
+                        particulars=description,
+                        amount=float(txn_data['deposit'] if txn_data['deposit'] > 0 else txn_data['withdrawal']),
+                        is_deposit=(txn_data['deposit'] > 0),
+                        verbose=False
+                    )
+                    if not extracted_notes:
+                        extracted_notes = ""  # Fallback to empty if extraction fails
+                except Exception as e:
+                    extracted_notes = ""
+                    print(f"   ⚠ Notes extraction error: {e}")
+                
                 if txn_data['deposit'] > 0:
                     # Deposit - categorize as income
                     amount = decimal.Decimal(str(txn_data['deposit']))
@@ -222,7 +242,7 @@ def import_detailed_transactions(pdf_path: str, password: str = None, dry_run: b
                         txn_date,
                         account,
                         description,
-                        notes=f"Page {txn_data['page']} | Balance: ₹{txn_data['balance']:,.2f}",
+                        notes=extracted_notes,
                         amount=amount
                     )
                     # Set as income
@@ -230,19 +250,38 @@ def import_detailed_transactions(pdf_path: str, password: str = None, dry_run: b
                         txn.category_id = income_category.id
                     
                 elif txn_data['withdrawal'] > 0:
-                    # Withdrawal - categorize as General
+                    # Withdrawal - use smart LLM categorization
                     amount = decimal.Decimal(str(-txn_data['withdrawal']))
                     txn = create_transaction(
                         actual.session,
                         txn_date,
                         account,
                         description,
-                        notes=f"Page {txn_data['page']} | Balance: ₹{txn_data['balance']:,.2f}",
+                        notes=extracted_notes,
                         amount=amount
                     )
-                    # Set as General
-                    if general_category:
-                        txn.category_id = general_category.id
+                    
+                    # Smart categorization using LLM
+                    try:
+                        category_name = categorize_transaction(
+                            particulars=description,
+                            amount=float(txn_data['withdrawal']),
+                            is_deposit=False,
+                            verbose=False
+                        )
+                        category = category_map.get(category_name)
+                        if category:
+                            txn.category_id = category.id
+                        else:
+                            print(f"   ⚠ Category '{category_name}' not found, using General")
+                            general_category = category_map.get("General")
+                            if general_category:
+                                txn.category_id = general_category.id
+                    except Exception as e:
+                        print(f"   ⚠ Categorization error: {e}, using General")
+                        general_category = category_map.get("General")
+                        if general_category:
+                            txn.category_id = general_category.id
                 else:
                     continue
                 
