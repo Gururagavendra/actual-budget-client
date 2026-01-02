@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 from import_detailed import parse_individual_transactions
 from pdf_reader_ocr import extract_text_from_pdf, process_bank_statement
+from verify_pdf_extraction import verify_pdf_extraction_is_correct
 
 PDF_PASSWORD = "guru2111"
 PDFS_DIR = "pdfs"
@@ -38,14 +39,20 @@ def test_all_pdfs():
             pages_text = extract_text_from_pdf(str(pdf_path), PDF_PASSWORD)
             transactions = parse_individual_transactions(pages_text, summary['starting_balance'])
             
-            # Calculate totals
-            calc_deposits = sum(t['deposit'] for t in transactions)
-            calc_withdrawals = sum(t['withdrawal'] for t in transactions)
-            calc_final = summary['starting_balance'] + calc_deposits - calc_withdrawals
-            
-            # Verify
-            balance_diff = abs(calc_final - summary['final_balance'])
-            passed = balance_diff < 1.0
+            # Verify extraction
+            try:
+                verification_results = verify_pdf_extraction_is_correct(summary, transactions)
+                passed = verification_results['passed']
+                balance_diff = verification_results['balance_diff']
+                calc_deposits = verification_results['calc_deposits']
+                calc_withdrawals = verification_results['calc_withdrawals']
+                calc_final = verification_results['calc_final']
+            except Exception as e:
+                passed = False
+                balance_diff = float('inf')
+                calc_deposits = 0.0
+                calc_withdrawals = 0.0
+                calc_final = 0.0
             
             result = {
                 'file': pdf_path.name,
