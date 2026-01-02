@@ -1,0 +1,68 @@
+Metadata-Version: 2.1
+Name: pymupdf-layout
+Version: 1.26.6
+Summary: Commercial extension for PyMuPDF
+Description-Content-Type: text/markdown
+Author: Artifex
+Author-email: support@artifex.com
+License: Commercial license. See artifex.com for details.
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Information Technology
+Classifier: License :: Other/Proprietary License
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: C
+Classifier: Programming Language :: C++
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Topic :: Utilities
+Classifier: Topic :: Multimedia :: Graphics
+Classifier: Topic :: Software Development :: Libraries
+Requires-Dist: PyMuPDF==1.26.6
+Requires-Dist: pyyaml
+Requires-Dist: numpy
+Requires-Dist: onnxruntime
+Requires-Dist: networkx
+Requires-Python: >=3.9
+
+# PyMuPDF Layout
+
+**PyMuPDF Layout** is a fast and lightweight layout analysis Python package integrated with PyMuPDF for clean, structured data output from PDF. It's fast, accurate and doesn't need GPUs like vision-based models.
+
+While other tools train machine learning models on rendered page images, PyMuPDF Layout trains Graph Neural Networks directly on PDF internals. This gives us accuracy at 10× the speed utilizing CPU-only resources.
+
+[![License PolyForm Noncommercial](https://img.shields.io/badge/license-Polyform_Noncommercial-purple)](https://polyformproject.org/licenses/noncommercial/1.0.0/)
+[![Python version](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12%20|%203.13-blue)](https://pypi.org/project/pymupdf-layout/)
+
+## Features
+
+- 📚 Structured data extraction from your documents in Markdown, JSON or TXT format
+- 🧐 Advanced document page layout understanding, including semantic markup for titles, headings, headers, footers, tables, images and text styling
+- 🔍 Detect and isolate header and footer patterns on each page
+
+
+## Usage
+
+PyMuPDF Layout works alongside PyMuDF4LLM's `to_markdown` method. Once PyMuPDF Layout is activated just use `to_markdown` and PyMuPDF Layout will work behind the scenes to analyse documents and deliver improved results.
+
+You can also get a `JSON` or `TXT` format of the data with `to_json` or `to_text`.
+
+### Extract Structured data
+
+```
+import pymupdf.layout
+pymupdf.layout.activate()
+import pymupdf4llm
+doc = pymupdf.open(source)
+md = pymupdf4llm.to_markdown(doc)
+json = pymupdf4llm.to_json(doc)
+txt = pymupdf4llm.to_text(doc)
+```
+
+## Try It!
+
+Try **PyMuPDF Layout** on [our PyMuPDF website](https://pymupdf.io).
+
+

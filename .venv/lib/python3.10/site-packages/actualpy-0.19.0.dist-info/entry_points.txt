@@ -1,0 +1,2 @@
+[console_scripts]
+actualpy = actual.cli.main:app
