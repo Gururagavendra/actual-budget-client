@@ -15,6 +15,7 @@ from actual import Actual
 from actual.queries import create_transaction, get_account, create_account, get_categories
 
 from pdf_reader_ocr import extract_text_from_pdf, process_bank_statement
+from verify_pdf_extraction import verify_pdf_extraction_is_correct, print_verification_results
 
 # Configuration
 ACTUAL_SERVER_URL = "http://localhost:5006"
@@ -143,14 +144,14 @@ def import_detailed_transactions(pdf_path: str, password: str = None, dry_run: b
     print(f"   Calculated Withdrawals: ₹{calc_withdrawals:,.2f}")
     print(f"   Final Balance: ₹{summary['final_balance']:,.2f}")
     
-    # Verify
-    calc_final = summary['starting_balance'] + calc_deposits - calc_withdrawals
-    print(f"\n   Verification: ₹{summary['starting_balance']:,.2f} + ₹{calc_deposits:,.2f} - ₹{calc_withdrawals:,.2f} = ₹{calc_final:,.2f}")
-    
-    if abs(calc_final - summary['final_balance']) > 1.0:
-        print(f"   ⚠️  Warning: Calculated balance doesn't match statement (diff: ₹{abs(calc_final - summary['final_balance']):.2f})")
-    else:
-        print(f"   ✅ Balance verification passed!")
+    # Verify extraction accuracy
+    try:
+        verification_results = verify_pdf_extraction_is_correct(summary, transactions)
+        print_verification_results(summary, transactions, verification_results)
+    except Exception as e:
+        print(f"\n❌ {e}")
+        print("\n⚠️  Import cancelled due to verification failure.")
+        return
     
     if dry_run:
         print("\n🔍 DRY RUN - Not posting to ActualBudget")
